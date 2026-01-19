@@ -10,8 +10,10 @@
   NEXT_PUBLIC_REST_API_ENDPOINT = "https://api.zone4build.com/commerce"
   NEXT_PUBLIC_AUTH_URL = "https://auth.zone4build.com"
   NEXT_PUBLIC_DOC_API_URL = "https://api.zone4build.com/doc"
+  NEXT_PUBLIC_CONFIG_KEY=2d4e4a6feb72f75b03295436d292644d3dc4c63be49d48bc73a3e62907ba561d
   NEXT_PUBLIC_TENANT_ID = "myelectro3"
-  NODE_VERSION = "20"
+  NODE_VERSION = "18"
+  NPM_FLAGS = "--legacy-peer-deps"
 
 [[redirects]]
   from = "/*"

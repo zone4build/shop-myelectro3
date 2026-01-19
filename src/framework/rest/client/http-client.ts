@@ -12,19 +12,28 @@ function getTenantIdFromHostname(): string {
 
     // If hostname is like toys.zone4build.com, extract 'toys'
     if (parts.length >= 3 && parts[1] === 'zone4build') {
+      console.log('[HTTP Client] Tenant ID from hostname:', parts[0]);
       return parts[0];
     }
 
     // For localhost or other patterns, use env var
-    return process.env.NEXT_PUBLIC_TENANT_ID || 'zone4food';
+    const tenantId = process.env.NEXT_PUBLIC_TENANT_ID || 'zone4food';
+    console.log('[HTTP Client] Tenant ID from env (client):', tenantId);
+    return tenantId;
   }
 
   // Server-side: use env var
-  return process.env.NEXT_PUBLIC_TENANT_ID || 'zone4food';
+  const tenantId = process.env.NEXT_PUBLIC_TENANT_ID || 'zone4food';
+  console.log('[HTTP Client] Tenant ID from env (server):', tenantId);
+  return tenantId;
 }
 
+const baseURL = process.env.NEXT_PUBLIC_REST_API_ENDPOINT;
+console.log('[HTTP Client] Initializing with baseURL:', baseURL);
+console.log('[HTTP Client] Environment:', typeof window !== 'undefined' ? 'client' : 'server');
+
 const httpClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_REST_API_ENDPOINT,
+  baseURL: baseURL,
   timeout: 30000,
   headers: {
     'x-tenant-id': getTenantIdFromHostname(),
@@ -40,13 +49,38 @@ httpClient.interceptors.request.use((config) => {
     Authorization: `Bearer ${token ? token : ''}`,
     'x-tenant-id': getTenantIdFromHostname(), // Update tenant ID on each request
   };
+
+  console.log('[HTTP Client] Request:', {
+    method: config.method?.toUpperCase(),
+    url: config.url,
+    baseURL: config.baseURL,
+    fullURL: `${config.baseURL}${config.url}`,
+    tenantId: config.headers['x-tenant-id']
+  });
+
   return config;
 });
 
 // Change response data/error here
 httpClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log('[HTTP Client] Response:', {
+      status: response.status,
+      url: response.config.url,
+      dataSize: JSON.stringify(response.data).length
+    });
+    return response;
+  },
   (error) => {
+    console.error('[HTTP Client] Error:', {
+      message: error.message,
+      code: error.code,
+      url: error.config?.url,
+      baseURL: error.config?.baseURL,
+      status: error.response?.status,
+      statusText: error.response?.statusText
+    });
+
     if (
       (error.response && error.response.status === 401) ||
       (error.response && error.response.status === 403) ||
@@ -54,7 +88,10 @@ httpClient.interceptors.response.use(
         error.response.data.message === 'PICKBAZAR_ERROR.NOT_AUTHORIZED')
     ) {
       Cookies.remove(AUTH_TOKEN_KEY);
-      Router.reload();
+      // Only reload on client-side (Router is not available during SSR)
+      if (typeof window !== 'undefined') {
+        Router.reload();
+      }
     }
     return Promise.reject(error);
   }
