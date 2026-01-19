@@ -14,6 +14,7 @@
   NEXT_PUBLIC_TENANT_ID = "myelectro3"
   NODE_VERSION = "18"
   NPM_FLAGS = "--legacy-peer-deps"
+  YARN_IGNORE_ENGINES = "true"
 
 [[redirects]]
   from = "/*"
