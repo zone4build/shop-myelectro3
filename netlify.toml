@@ -1,0 +1,19 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NEXT_PUBLIC_API_URL = "https://api.zone4build.com"
+  NEXT_PUBLIC_REST_API_ENDPOINT = "https://api.zone4build.com/commerce"
+  NEXT_PUBLIC_AUTH_URL = "https://auth.zone4build.com"
+  NEXT_PUBLIC_DOC_API_URL = "https://api.zone4build.com/doc"
+  NEXT_PUBLIC_TENANT_ID = "myelectro3"
+  NODE_VERSION = "20"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

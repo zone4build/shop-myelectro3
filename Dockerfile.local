@@ -1,0 +1,63 @@
+FROM node:20-slim AS base
+
+FROM base AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN mkdir -p ui/admin ui/client ui/tenant1 ui/shop
+COPY ui/admin/package.json ./ui/admin/package.json
+COPY ui/client/package.json ./ui/client/package.json
+COPY ui/tenant1/package.json ./ui/tenant1/package.json
+COPY ui/shop/package.json ./ui/shop/package.json
+ENV HUSKY=0
+RUN npm ci --workspaces --ignore-scripts
+
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package.json ./package.json
+COPY --from=deps /app/ui/admin/node_modules ./ui/admin/node_modules
+COPY --from=deps /app/ui/client/node_modules ./ui/client/node_modules
+COPY --from=deps /app/ui/tenant1/node_modules ./ui/tenant1/node_modules
+COPY --from=deps /app/ui/shop/node_modules ./ui/shop/node_modules
+COPY . .
+
+# Accept build arguments for Next.js public environment variables
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_REST_API_ENDPOINT
+ARG NEXT_PUBLIC_AUTH_URL
+ARG NEXT_PUBLIC_ADMIN_URL
+ARG NEXT_PUBLIC_TENANT_ID
+ARG NEXT_PUBLIC_DEFAULT_LANGUAGE
+ARG NEXT_PUBLIC_ENABLE_MULTI_LANG
+ARG NEXT_PUBLIC_AVAILABLE_LANGUAGES
+ARG FRAMEWORK_PROVIDER
+ARG APPLICATION_MODE
+
+# Export them as environment variables for the build
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_REST_API_ENDPOINT=${NEXT_PUBLIC_REST_API_ENDPOINT}
+ENV NEXT_PUBLIC_AUTH_URL=${NEXT_PUBLIC_AUTH_URL}
+ENV NEXT_PUBLIC_ADMIN_URL=${NEXT_PUBLIC_ADMIN_URL}
+ENV NEXT_PUBLIC_TENANT_ID=${NEXT_PUBLIC_TENANT_ID}
+ENV NEXT_PUBLIC_DEFAULT_LANGUAGE=${NEXT_PUBLIC_DEFAULT_LANGUAGE}
+ENV NEXT_PUBLIC_ENABLE_MULTI_LANG=${NEXT_PUBLIC_ENABLE_MULTI_LANG}
+ENV NEXT_PUBLIC_AVAILABLE_LANGUAGES=${NEXT_PUBLIC_AVAILABLE_LANGUAGES}
+ENV FRAMEWORK_PROVIDER=${FRAMEWORK_PROVIDER}
+ENV APPLICATION_MODE=${APPLICATION_MODE}
+
+WORKDIR /app/ui/shop
+RUN npm run build
+
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+COPY --from=builder /app/ui/shop/.next/standalone ./
+COPY --from=builder /app/ui/shop/.next/static ./ui/shop/.next/static
+COPY --from=builder /app/ui/shop/public ./ui/shop/public
+USER nextjs
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+CMD ["node", "ui/shop/server.js"]
